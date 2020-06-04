@@ -21,12 +21,6 @@ import json
 import requests
 from requests.exceptions import ConnectionError
 
-save_to_db = True
-send_tweet = False
-
-starting_capital = 50
-position_size = 5
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -267,7 +261,8 @@ def percentage(part, whole):
   return '%.2f' % (100 * float(part)/float(whole))
 
 
-def tweet(config, output_profit, output_daily_data):
+def tweet(config, output_profit, output_daily_data, starting_capital, position_size):
+    print("Tweeting...")
     api_key = config.get("api_server", {}).get("api_key")
     api_secret_key = config.get("api_server", {}).get("api_secret_key")
     access_token = config.get("api_server", {}).get("access_token")
@@ -281,16 +276,19 @@ def tweet(config, output_profit, output_daily_data):
     # composed.append(f"Profit open: {int(output_profit['profit_all_coin'])} USDT ({percentage(output_profit['profit_all_coin'], starting_capital)}%)")
     # composed.append(f"Profit closed: {int(output_profit['profit_closed_coin'])} USDT ({percentage(output_profit['profit_closed_coin'], starting_capital)}%)")
 
-    closed_gain_percentage_total = percentage(output_profit['profit_closed_coin'], starting_capital)
-    open_gain_percentage_total = percentage(output_profit['profit_all_coin'], starting_capital)
-    position_size_percentage = starting_capital + float(output_profit['profit_closed_coin'])
+    closed_profit_today = percentage(output_daily_data['abs_profit'], starting_capital)
+    closed_profit_percentage_total = percentage(output_profit['profit_closed_coin'], starting_capital)
+    open_profit_percentage_total = percentage(output_profit['profit_all_coin'], starting_capital)
+    current_capital = starting_capital + float(output_profit['profit_closed_coin'])
+    position_size = percentage(position_size, current_capital)
+    best_pair_profit_percentage = percentage(output_profit['best_rate'], starting_capital)
 
-    composed.append(f"Closed profit today ({output_daily_data['date']}): {percentage(output_daily_data['abs_profit'], starting_capital)}%")
+    composed.append(f"Closed profit today ({output_daily_data['date']}): {closed_profit_today}%")
     composed.append(f"Trades today: {output_daily_data['trade_count']}")
-    composed.append(f"Open/closed total profit: {open_gain_percentage_total}%/{closed_gain_percentage_total}%")
-    composed.append(f"Position size: {percentage(position_size, position_size_percentage)}%")
+    composed.append(f"Open/closed total profit: {open_profit_percentage_total}%/{closed_profit_percentage_total}%")
+    composed.append(f"Position size: {position_size}%")
     # composed.append(f"Best performer: {output_profit['best_pair']} ({output_profit['best_rate']} USDT)")
-    composed.append(f"Best: {output_profit['best_pair']} ({percentage(output_profit['best_rate'], starting_capital)}%)")
+    composed.append(f"Best: {output_profit['best_pair']} ({best_pair_profit_percentage}%)")
     composed.append(f"All trades/closed: {output_profit['trade_count']}/{output_profit['closed_trade_count']}")
     composed.append(f"Last action: {output_profit['latest_trade_date']}")
     composed.append(f"Average trade duration: {output_profit['avg_duration']}")
@@ -299,10 +297,14 @@ def tweet(config, output_profit, output_daily_data):
     print(to_tweet)
     api.update_status(to_tweet)
 
-def db_save(config, output_profit, output_daily_data):
-    closed_gain_percentage_total = percentage(output_profit['profit_closed_coin'], starting_capital)
-    open_gain_percentage_total = percentage(output_profit['profit_all_coin'], starting_capital)
-    position_size_percentage = starting_capital + float(output_profit['profit_closed_coin'])
+def db_save(config, output_profit, output_daily_data, starting_capital, position_size):
+    print("Saving to database...")
+    closed_profit_today = percentage(output_daily_data['abs_profit'], starting_capital)
+    closed_profit_percentage_total = percentage(output_profit['profit_closed_coin'], starting_capital)
+    open_profit_percentage_total = percentage(output_profit['profit_all_coin'], starting_capital)
+    current_capital = starting_capital + float(output_profit['profit_closed_coin'])
+    position_size = percentage(position_size, current_capital)
+    best_pair_profit_percentage = percentage(output_profit['best_rate'], starting_capital)
 
     timestamp = time.time()
 
@@ -311,10 +313,11 @@ def db_save(config, output_profit, output_daily_data):
                  " `day` TEXT, " \
                  "`closed_profit_today` NUMERIC, " \
                  "`trades_today` NUMERIC, " \
-                 "`closed_gain_percentage_total` NUMERIC, " \
-                 "`open_gain_percentage_total` NUMERIC, " \
+                 "`closed_profit_percentage_total` NUMERIC, " \
+                 "`open_profit_percentage_total` NUMERIC, " \
                  "`position_size` NUMERIC, " \
                  "`best_pair` TEXT, " \
+                 "`best_pair_profit_percentage` TEXT, " \
                  "`all_trades` NUMERIC, " \
                  "`closed_trades` NUMERIC, " \
                  "`last_action` TEXT, " \
@@ -328,14 +331,15 @@ def db_save(config, output_profit, output_daily_data):
 
     connection.execute(SQL_CREATE)
     connection.commit()
-    connection.execute("INSERT INTO trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+    connection.execute("INSERT INTO trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                  (timestamp,
                   output_daily_data['date'],
-                  percentage(output_daily_data['abs_profit'], starting_capital),
+                  closed_profit_today,
                   output_daily_data['trade_count'],
-                  closed_gain_percentage_total,
-                  open_gain_percentage_total,
-                  percentage(position_size, position_size_percentage),
+                  closed_profit_percentage_total,
+                  open_profit_percentage_total,
+                  position_size,
+                  best_pair_profit_percentage,
                   output_profit['best_pair'],
                   output_profit['trade_count'],
                   output_profit['closed_trade_count'],
@@ -349,12 +353,6 @@ def main(args):
         print_commands()
         sys.exit()
 
-    config = load_config(args["config"])
-    url = config.get("api_server", {}).get("server_url")
-    port = config.get("api_server", {}).get("listen_port")
-    username = config.get("api_server", {}).get("username")
-    password = config.get("api_server", {}).get("password")
-
     server_url = f"http://{url}:{port}"
     client = FtRestClient(server_url, username, password)
 
@@ -365,14 +363,34 @@ def main(args):
     output_daily_data = output_daily['data'][0] # [0] selects only the last day
 
     if send_tweet:
-        tweet(config=config, output_profit=output_profit, output_daily_data=output_daily_data)
+        tweet(config=config,
+              output_profit=output_profit,
+              output_daily_data=output_daily_data,
+              starting_capital=starting_capital,
+              position_size=position_size)
+
     if save_to_db:
-        db_save(config=config, output_profit=output_profit, output_daily_data=output_daily_data)
+        db_save(config=config,
+                output_profit=output_profit,
+                output_daily_data=output_daily_data,
+                starting_capital=starting_capital,
+                position_size=position_size)
 
 if __name__ == "__main__":
     args = add_arguments()
 
+    config = load_config(args["config"])
+    url = config.get("api_server", {}).get("server_url")
+    port = config.get("api_server", {}).get("listen_port")
+    username = config.get("api_server", {}).get("username")
+    password = config.get("api_server", {}).get("password")
+    save_to_db = config.get("api_server", {}).get("save_to_db")
+    send_tweet = config.get("api_server", {}).get("send_tweet")
+    starting_capital = config.get("api_server", {}).get("starting_capital")
+    position_size = config.get("api_server", {}).get("position_size")
+    run_interval = config.get("api_server", {}).get("run_interval")
+
     while True:
         main(args)
-        print("Sleeping for 30 minutes")
-        time.sleep(1800)
+        print(f"Sleeping for {run_interval/60} minutes")
+        time.sleep(run_interval)
