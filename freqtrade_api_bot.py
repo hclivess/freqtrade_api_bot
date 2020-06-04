@@ -22,14 +22,12 @@ import requests
 from requests.exceptions import ConnectionError
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("ft_rest_client")
 
 
-class FtRestClient():
-
+class FtRestClient:
     def __init__(self, serverurl, username=None, password=None):
 
         self._serverurl = serverurl
@@ -38,13 +36,11 @@ class FtRestClient():
 
     def _call(self, method, apipath, params: dict = None, data=None, files=None):
 
-        if str(method).upper() not in ('GET', 'POST', 'PUT', 'DELETE'):
-            raise ValueError('invalid method <{0}>'.format(method))
+        if str(method).upper() not in ("GET", "POST", "PUT", "DELETE"):
+            raise ValueError("invalid method <{0}>".format(method))
         basepath = f"{self._serverurl}/api/v1/{apipath}"
 
-        hd = {"Accept": "application/json",
-              "Content-Type": "application/json"
-              }
+        hd = {"Accept": "application/json", "Content-Type": "application/json"}
 
         # Split url
         schema, netloc, path, par, query, fragment = urlparse(basepath)
@@ -190,9 +186,7 @@ class FtRestClient():
         :param price: Optional - price to buy
         :return: json object of the trade
         """
-        data = {"pair": pair,
-                "price": price
-                }
+        data = {"pair": pair, "price": price}
         return self._post("forcebuy", data=data)
 
     def forcesell(self, tradeid):
@@ -207,31 +201,36 @@ class FtRestClient():
 
 def add_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command",
-                        help="Positional argument defining the command to execute.",
-                        nargs="?"
-                        )
+    parser.add_argument(
+        "command",
+        help="Positional argument defining the command to execute.",
+        nargs="?",
+    )
 
-    parser.add_argument('--show',
-                        help='Show possible methods with this client',
-                        dest='show',
-                        action='store_true',
-                        default=False
-                        )
+    parser.add_argument(
+        "--show",
+        help="Show possible methods with this client",
+        dest="show",
+        action="store_true",
+        default=False,
+    )
 
-    parser.add_argument('-c', '--config',
-                        help='Specify configuration file (default: %(default)s). ',
-                        dest='config',
-                        type=str,
-                        metavar='PATH',
-                        default='config.json'
-                        )
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="Specify configuration file (default: %(default)s). ",
+        dest="config",
+        type=str,
+        metavar="PATH",
+        default="config.json",
+    )
 
-    parser.add_argument("command_arguments",
-                        help="Positional arguments for the parameters for [command]",
-                        nargs="*",
-                        default=[]
-                        )
+    parser.add_argument(
+        "command_arguments",
+        help="Positional arguments for the parameters for [command]",
+        nargs="*",
+        default=[],
+    )
 
     args = parser.parse_args()
     return vars(args)
@@ -253,12 +252,15 @@ def print_commands():
     client = FtRestClient(None)
     print("Possible commands:\n")
     for x, y in inspect.getmembers(client):
-        if not x.startswith('_'):
-            doc = re.sub(':return:.*', '', getattr(client, x).__doc__, flags=re.MULTILINE).rstrip()
+        if not x.startswith("_"):
+            doc = re.sub(
+                ":return:.*", "", getattr(client, x).__doc__, flags=re.MULTILINE
+            ).rstrip()
             print(f"{x}\n\t{doc}\n")
 
+
 def percentage(part, whole):
-  return '%.2f' % (100 * float(part)/float(whole))
+    return "%.2f" % (100 * float(part) / float(whole))
 
 
 def tweet(config, output_profit, output_daily_data, starting_capital, position_size):
@@ -276,20 +278,34 @@ def tweet(config, output_profit, output_daily_data, starting_capital, position_s
     # composed.append(f"Profit open: {int(output_profit['profit_all_coin'])} USDT ({percentage(output_profit['profit_all_coin'], starting_capital)}%)")
     # composed.append(f"Profit closed: {int(output_profit['profit_closed_coin'])} USDT ({percentage(output_profit['profit_closed_coin'], starting_capital)}%)")
 
-    closed_profit_today = percentage(output_daily_data['abs_profit'], starting_capital)
-    closed_profit_percentage_total = percentage(output_profit['profit_closed_coin'], starting_capital)
-    open_profit_percentage_total = percentage(output_profit['profit_all_coin'], starting_capital)
-    current_capital = starting_capital + float(output_profit['profit_closed_coin'])
+    closed_profit_today = percentage(output_daily_data["abs_profit"], starting_capital)
+    closed_profit_percentage_total = percentage(
+        output_profit["profit_closed_coin"], starting_capital
+    )
+    open_profit_percentage_total = percentage(
+        output_profit["profit_all_coin"], starting_capital
+    )
+    current_capital = starting_capital + float(output_profit["profit_closed_coin"])
     position_size = percentage(position_size, current_capital)
-    best_pair_profit_percentage = percentage(output_profit['best_rate'], starting_capital)
+    best_pair_profit_percentage = percentage(
+        output_profit["best_rate"], starting_capital
+    )
 
-    composed.append(f"Closed profit today ({output_daily_data['date']}): {closed_profit_today}%")
+    composed.append(
+        f"Closed profit today ({output_daily_data['date']}): {closed_profit_today}%"
+    )
     composed.append(f"Trades today: {output_daily_data['trade_count']}")
-    composed.append(f"Open/closed total profit: {open_profit_percentage_total}%/{closed_profit_percentage_total}%")
+    composed.append(
+        f"Open/closed total profit: {open_profit_percentage_total}%/{closed_profit_percentage_total}%"
+    )
     composed.append(f"Position size: {position_size}%")
     # composed.append(f"Best performer: {output_profit['best_pair']} ({output_profit['best_rate']} USDT)")
-    composed.append(f"Best: {output_profit['best_pair']} ({best_pair_profit_percentage}%)")
-    composed.append(f"All trades/closed: {output_profit['trade_count']}/{output_profit['closed_trade_count']}")
+    composed.append(
+        f"Best: {output_profit['best_pair']} ({best_pair_profit_percentage}%)"
+    )
+    composed.append(
+        f"All trades/closed: {output_profit['trade_count']}/{output_profit['closed_trade_count']}"
+    )
     composed.append(f"Last action: {output_profit['latest_trade_date']}")
     composed.append(f"Average trade duration: {output_profit['avg_duration']}")
 
@@ -297,55 +313,67 @@ def tweet(config, output_profit, output_daily_data, starting_capital, position_s
     print(to_tweet)
     api.update_status(to_tweet)
 
+
 def db_save(config, output_profit, output_daily_data, starting_capital, position_size):
     print("Saving to database...")
-    closed_profit_today = percentage(output_daily_data['abs_profit'], starting_capital)
-    closed_profit_percentage_total = percentage(output_profit['profit_closed_coin'], starting_capital)
-    open_profit_percentage_total = percentage(output_profit['profit_all_coin'], starting_capital)
-    current_capital = starting_capital + float(output_profit['profit_closed_coin'])
+    closed_profit_today = percentage(output_daily_data["abs_profit"], starting_capital)
+    closed_profit_percentage_total = percentage(
+        output_profit["profit_closed_coin"], starting_capital
+    )
+    open_profit_percentage_total = percentage(
+        output_profit["profit_all_coin"], starting_capital
+    )
+    current_capital = starting_capital + float(output_profit["profit_closed_coin"])
     position_size = percentage(position_size, current_capital)
-    best_pair_profit_percentage = percentage(output_profit['best_rate'], starting_capital)
+    best_pair_profit_percentage = percentage(
+        output_profit["best_rate"], starting_capital
+    )
 
     timestamp = time.time()
 
-    SQL_CREATE = "CREATE TABLE IF NOT EXISTS trades ( " \
-                 "`timestamp` NUMERIC," \
-                 " `day` TEXT, " \
-                 "`closed_profit_today` NUMERIC, " \
-                 "`trades_today` NUMERIC, " \
-                 "`closed_profit_percentage_total` NUMERIC, " \
-                 "`open_profit_percentage_total` NUMERIC, " \
-                 "`position_size` NUMERIC, " \
-                 "`best_pair` TEXT, " \
-                 "`best_pair_profit_percentage` TEXT, " \
-                 "`all_trades` NUMERIC, " \
-                 "`closed_trades` NUMERIC, " \
-                 "`last_action` TEXT, " \
-                 "`average_duration` TEXT " \
-                 ")"
-
-
+    SQL_CREATE = (
+        "CREATE TABLE IF NOT EXISTS trades ( "
+        "`timestamp` NUMERIC,"
+        " `day` TEXT, "
+        "`closed_profit_today` NUMERIC, "
+        "`trades_today` NUMERIC, "
+        "`closed_profit_percentage_total` NUMERIC, "
+        "`open_profit_percentage_total` NUMERIC, "
+        "`position_size` NUMERIC, "
+        "`best_pair` TEXT, "
+        "`best_pair_profit_percentage` TEXT, "
+        "`all_trades` NUMERIC, "
+        "`closed_trades` NUMERIC, "
+        "`last_action` TEXT, "
+        "`average_duration` TEXT "
+        ")"
+    )
 
     connection = sqlite3.connect("history.db")
     cursor = connection.cursor()
 
     connection.execute(SQL_CREATE)
     connection.commit()
-    connection.execute("INSERT INTO trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                 (timestamp,
-                  output_daily_data['date'],
-                  closed_profit_today,
-                  output_daily_data['trade_count'],
-                  closed_profit_percentage_total,
-                  open_profit_percentage_total,
-                  position_size,
-                  best_pair_profit_percentage,
-                  output_profit['best_pair'],
-                  output_profit['trade_count'],
-                  output_profit['closed_trade_count'],
-                  output_profit['latest_trade_date'],
-                  output_profit['avg_duration'],))
+    connection.execute(
+        "INSERT INTO trades VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            timestamp,
+            output_daily_data["date"],
+            closed_profit_today,
+            output_daily_data["trade_count"],
+            closed_profit_percentage_total,
+            open_profit_percentage_total,
+            position_size,
+            best_pair_profit_percentage,
+            output_profit["best_pair"],
+            output_profit["trade_count"],
+            output_profit["closed_trade_count"],
+            output_profit["latest_trade_date"],
+            output_profit["avg_duration"],
+        ),
+    )
     connection.commit()
+
 
 def main(args):
 
@@ -356,25 +384,30 @@ def main(args):
     server_url = f"http://{url}:{port}"
     client = FtRestClient(server_url, username, password)
 
-    #m = [x for x, y in inspect.getmembers(client) if not x.startswith('_')]
+    # m = [x for x, y in inspect.getmembers(client) if not x.startswith('_')]
 
     output_profit = getattr(client, "profit")(*args["command_arguments"])
     output_daily = getattr(client, "daily")(*args["command_arguments"])
-    output_daily_data = output_daily['data'][0] # [0] selects only the last day
+    output_daily_data = output_daily["data"][0]  # [0] selects only the last day
 
     if send_tweet:
-        tweet(config=config,
-              output_profit=output_profit,
-              output_daily_data=output_daily_data,
-              starting_capital=starting_capital,
-              position_size=position_size)
+        tweet(
+            config=config,
+            output_profit=output_profit,
+            output_daily_data=output_daily_data,
+            starting_capital=starting_capital,
+            position_size=position_size,
+        )
 
     if save_to_db:
-        db_save(config=config,
-                output_profit=output_profit,
-                output_daily_data=output_daily_data,
-                starting_capital=starting_capital,
-                position_size=position_size)
+        db_save(
+            config=config,
+            output_profit=output_profit,
+            output_daily_data=output_daily_data,
+            starting_capital=starting_capital,
+            position_size=position_size,
+        )
+
 
 if __name__ == "__main__":
     args = add_arguments()
