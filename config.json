@@ -2,13 +2,17 @@
     "api_server": {
         "enabled": true,
         "server_url": "127.0.0.1",    
-        "listen_ip_address": "0.0.0.0",
         "listen_port": 8080,
         "username": "",
         "password": "",
         "api_key": "",
         "api_secret_key": "",
         "access_token": "",
-        "access_token_secret": ""  
+        "access_token_secret": "",
+        "tweet": "False",
+        "save_to_db": "True",
+        "starting_capital": 50,
+        "position_size": 5,
+        "run_interval": 1800    
     }
 }
