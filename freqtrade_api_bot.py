@@ -423,7 +423,14 @@ if __name__ == "__main__":
     position_size = config.get("api_server", {}).get("position_size")
     run_interval = config.get("api_server", {}).get("run_interval")
 
+    print(f"Database saving configured to {save_to_db}")
+    print(f"Tweeting configured to {send_tweet}")
+
     while True:
-        main(args)
-        print(f"Sleeping for {run_interval/60} minutes")
-        time.sleep(run_interval)
+        try:
+            main(args)
+            print(f"Sleeping for {run_interval/60} minutes")
+        except Exception as e:
+            print(f"An error occurred: {e}, skipping run")
+        finally:
+            time.sleep(run_interval)
