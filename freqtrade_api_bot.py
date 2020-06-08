@@ -263,7 +263,7 @@ def percentage(part, whole):
     return "%.2f" % (100 * float(part) / float(whole))
 
 
-def tweet(config, output_profit, output_daily_data, starting_capital, position_size):
+def tweet(output_profit, output_daily_data):
     print("Tweeting...")
     api_key = config.get("api_server", {}).get("api_key")
     api_secret_key = config.get("api_server", {}).get("api_secret_key")
@@ -286,7 +286,12 @@ def tweet(config, output_profit, output_daily_data, starting_capital, position_s
         output_profit["profit_all_coin"], starting_capital
     )
     current_capital = starting_capital + float(output_profit["profit_closed_coin"])
-    position_size = percentage(position_size, current_capital)
+
+    if dynamic_position:
+        position_size = percentage(current_capital / max_open_trades, current_capital)
+    else:
+        position_size = percentage(static_stake, current_capital)
+
     best_pair_profit_percentage = percentage(
         output_profit["best_rate"], starting_capital
     )
@@ -314,7 +319,7 @@ def tweet(config, output_profit, output_daily_data, starting_capital, position_s
     api.update_status(to_tweet)
 
 
-def db_save(config, output_profit, output_daily_data, starting_capital, position_size):
+def db_save(output_profit, output_daily_data):
     print("Saving to database...")
     closed_profit_today = percentage(output_daily_data["abs_profit"], starting_capital)
     closed_profit_percentage_total = percentage(
@@ -324,7 +329,12 @@ def db_save(config, output_profit, output_daily_data, starting_capital, position
         output_profit["profit_all_coin"], starting_capital
     )
     current_capital = starting_capital + float(output_profit["profit_closed_coin"])
-    position_size = percentage(position_size, current_capital)
+
+    if dynamic_position:
+        position_size = percentage(current_capital / max_open_trades, current_capital)
+    else:
+        position_size = percentage(static_stake, current_capital)
+
     best_pair_profit_percentage = percentage(
         output_profit["best_rate"], starting_capital
     )
@@ -392,22 +402,15 @@ def main(args):
 
     if send_tweet:
         tweet(
-            config=config,
             output_profit=output_profit,
             output_daily_data=output_daily_data,
-            starting_capital=starting_capital,
-            position_size=position_size,
         )
 
     if save_to_db:
         db_save(
-            config=config,
             output_profit=output_profit,
             output_daily_data=output_daily_data,
-            starting_capital=starting_capital,
-            position_size=position_size,
         )
-
 
 if __name__ == "__main__":
     args = add_arguments()
@@ -420,8 +423,10 @@ if __name__ == "__main__":
     save_to_db = config.get("api_server", {}).get("save_to_db")
     send_tweet = config.get("api_server", {}).get("send_tweet")
     starting_capital = config.get("api_server", {}).get("starting_capital")
-    position_size = config.get("api_server", {}).get("position_size")
+    static_stake = config.get("api_server", {}).get("position_size")
+    max_open_trades = config.get("api_server", {}).get("max_open_trades")
     run_interval = config.get("api_server", {}).get("run_interval")
+    dynamic_position = config.get("api_server", {}).get("dynamic_position")
 
     print(f"Database saving configured to {save_to_db}")
     print(f"Tweeting configured to {send_tweet}")
@@ -432,5 +437,5 @@ if __name__ == "__main__":
             print(f"Sleeping for {run_interval/60} minutes")
         except Exception as e:
             print(f"An error occurred: {e}, skipping run")
-        finally:
-            time.sleep(run_interval)
+            raise
+        time.sleep(run_interval)
