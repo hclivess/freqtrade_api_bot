@@ -436,6 +436,5 @@ if __name__ == "__main__":
             main(args)
             print(f"Sleeping for {run_interval/60} minutes")
         except Exception as e:
-            print(f"An error occurred: {e}, skipping run")
-            raise
+            print(f"An error occurred: {e}, skipping run")            
         time.sleep(run_interval)
